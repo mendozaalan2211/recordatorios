@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mis Recordatorios</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --card: #191c23;
+    --card-hi: #212530;
+    --line: #2a2f3a;
+    --txt: #f2f4f8;
+    --mut: #8b93a3;
+    --send: #2ec76b;
+    --send-dk: #24a457;
+    --now: #ffb020;
+    --done: #4a5162;
+    --red: #ff4d4d;
+    --radius: 16px;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--txt);
+    font-family: var(--font);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 40px env(safe-area-inset-left);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(15,17,21,0.85);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 18px 12px;
+  }
+
+  .clock {
+    font-size: 13px;
+    color: var(--mut);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .daybar {
+    display: flex;
+    gap: 6px;
+    margin-top: 14px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+  .daybar::-webkit-scrollbar { display: none; }
+
+  .day {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    border-radius: 11px;
+    background: var(--card);
+    color: var(--mut);
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+  }
+  .day.active {
+    background: var(--txt);
+    color: #0f1115;
+    font-weight: 700;
+  }
+  .day.today::after {
+    content: "";
+    position: absolute;
+    top: 5px; right: 6px;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--now);
+  }
+  .day.active.today::after { background: var(--red); }
+
+  main { padding: 16px 14px 0; max-width: 640px; margin: 0 auto; }
+
+  .chat-group { margin-bottom: 26px; }
+
+  .chat-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 4px 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--mut);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .chat-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--send);
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 15px;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+  }
+  .card.now {
+    border-color: var(--now);
+    background: var(--card-hi);
+    box-shadow: 0 0 0 1px var(--now), 0 8px 24px -12px rgba(255,176,32,0.4);
+  }
+  .card.sent { opacity: 0.5; }
+
+  .card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .time {
+    font-size: 15px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--txt);
+  }
+  .card.now .time { color: var(--now); }
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 20px;
+    letter-spacing: 0.4px;
+  }
+  .badge.now { background: var(--now); color: #0f1115; }
+  .badge.sent { background: var(--done); color: var(--txt); }
+
+  .msg {
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--txt);
+    white-space: pre-wrap;
+    word-break: break-word;
+    margin-bottom: 12px;
+  }
+  .card.sent .msg { text-decoration: line-through; text-decoration-color: var(--mut); }
+
+  .actions { display: flex; gap: 8px; }
+
+  .btn {
+    flex: 1;
+    border: none;
+    border-radius: 11px;
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: transform 0.1s, background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-send {
+    background: linear-gradient(180deg, var(--send), var(--send-dk));
+    color: #fff;
+  }
+  .btn-edit {
+    flex: 0 0 auto;
+    width: 48px;
+    background: var(--card-hi);
+    color: var(--mut);
+    border: 1px solid var(--line);
+  }
+  .btn-done {
+    flex: 0 0 auto;
+    width: 48px;
+    background: var(--card-hi);
+    color: var(--send);
+    border: 1px solid var(--line);
+  }
+  .card.sent .btn-send { background: var(--done); }
+
+  .empty {
+    text-align: center;
+    color: var(--mut);
+    padding: 60px 20px;
+    font-size: 16px;
+  }
+  .empty .big { font-size: 42px; margin-bottom: 12px; }
+
+  .progress {
+    margin: 0 4px 18px;
+    font-size: 13px;
+    color: var(--mut);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .pbar {
+    flex: 1;
+    height: 6px;
+    background: var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .pfill {
+    height: 100%;
+    background: var(--send);
+    border-radius: 10px;
+    transition: width 0.3s;
+  }
+
+  /* Modal edición */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    display: none;
+    align-items: flex-end;
+    z-index: 100;
+  }
+  .overlay.open { display: flex; }
+  .sheet {
+    background: var(--card);
+    width: 100%;
+    border-radius: 22px 22px 0 0;
+    padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--line);
+    animation: up 0.25s ease;
+  }
+  @keyframes up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .sheet h3 { margin: 0 0 4px; font-size: 18px; }
+  .sheet p { margin: 0 0 14px; font-size: 13px; color: var(--mut); }
+  textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    color: var(--txt);
+    font-family: var(--font);
+    font-size: 15px;
+    padding: 12px;
+    min-height: 110px;
+    resize: vertical;
+    line-height: 1.45;
+  }
+  textarea:focus { outline: none; border-color: var(--send); }
+  .sheet-btns { display: flex; gap: 8px; margin-top: 14px; }
+  .sheet-btns .btn { padding: 14px; }
+  .btn-save { background: var(--send); color: #fff; }
+  .btn-cancel { background: var(--card-hi); color: var(--mut); border: 1px solid var(--line); }
+
+  .hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--done);
+    margin: 24px auto 0;
+    max-width: 300px;
+    line-height: 1.5;
+  }
+
+  /* Botón de alarmas en el header */
+  .alarm-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    margin-top: 12px;
+    padding: 11px;
+    border-radius: 12px;
+    border: 1px solid var(--now);
+    background: rgba(255,176,32,0.12);
+    color: var(--now);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .alarm-btn:active { transform: scale(0.98); }
+
+  /* Sheet de alarmas (reusa .overlay y .sheet) */
+  .sheet .alarm-list {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 4px 0;
+    margin: 4px 0 14px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .alarm-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .alarm-row:last-child { border-bottom: none; }
+  .alarm-row .a-time {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--now);
+  }
+  .alarm-row .a-day {
+    font-size: 12px;
+    color: var(--mut);
+    flex: 1;
+    margin-left: 12px;
+  }
+  .btn-alarm-go { background: var(--now); color: #0f1115; }
+  .sheet .small-note {
+    font-size: 12px;
+    color: var(--mut);
+    line-height: 1.5;
+    margin: 0 0 4px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="clock" id="clock"></div>
+  <h1 id="title">Recordatorios</h1>
+  <div class="daybar" id="daybar"></div>
+  <button class="alarm-btn" onclick="openAlarms()">🔔 Activar alarmas de todos los recordatorios</button>
+</header>
+
+<main id="main"></main>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h3>Editar mensaje</h3>
+    <p>Cambia el texto solo para hoy antes de mandarlo.</p>
+    <textarea id="editText"></textarea>
+    <div class="sheet-btns">
+      <button class="btn btn-cancel" onclick="closeEdit()">Cancelar</button>
+      <button class="btn btn-save" onclick="saveEdit()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="alarmOverlay">
+  <div class="sheet">
+    <h3>🔔 Alarmas automáticas</h3>
+    <p>Se agregan a tu Calendario del iPhone y te avisan a cada hora, cada semana. Así nunca se te olvida abrir la app.</p>
+    <div class="alarm-list" id="alarmList"></div>
+    <p class="small-note">Al tocar el botón se descarga un archivo. Ábrelo y tu iPhone te preguntará si quieres agregar los avisos a tu Calendario. Dale que sí y listo — se repiten solos cada semana.</p>
+    <div class="sheet-btns">
+      <button class="btn btn-cancel" onclick="closeAlarms()">Cerrar</button>
+      <button class="btn btn-alarm-go" onclick="descargarAlarmas()">Agregar al Calendario</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==========================================================================
+   AQUÍ EDITAS TUS RECORDATORIOS  👇
+   --------------------------------------------------------------------------
+   - numero:  el número del contacto/grupo (con o sin +52). Déjalo vacío ""
+              si prefieres elegir el chat a mano al abrir Mensajes.
+   - Cada recordatorio tiene: hora ("HH:MM" en 24h) y texto.
+   - Agrega o quita los que quieras copiando las líneas.
+   ========================================================================== */
+
+const DATOS = {
+  // L = Lunes, M = Martes, X = Miércoles, J = Jueves, V = Viernes, S = Sábado
+  chats: [
+    {
+      nombre: "Diario (Lun–Sáb)",
+      numero: "",                 // <-- pon el número/grupo aquí, ej: "+521234567890"
+      dias: ["L","M","X","J","V","S"],
+      mensajes: [
+        { hora: "20:00", texto: "Hi team,\nAt the end of each night, don’t forget to:\n• Take a photo of that day’s group\n• Send proof of the salvation cards\n• Take a photo of the 6:00 PM group\nThis must be done every night, Monday through Saturday.\nLet’s stay consistent 👍" }
+      ]
+    },
+    {
+      nombre: "Lunes",
+      numero: "",
+      dias: ["L"],
+      mensajes: [
+        { hora: "09:00", texto: "Please make sure to enter all salvations into the report before 11:30 AM." },
+        { hora: "10:00", texto: "FFG Health Report\nYouth 🚨\nSpanish 🚨\nCollege 🚨\nIsaac ✅\nChris 🚨\nDom 🚨\nDylan 🚨\nBobby 🚨" },
+        { hora: "10:00", texto: "Reminder:\nDon’t forget to add your comment to the Health Report." },
+        { hora: "12:30", texto: "Reminder:\nThe FFG Health Report must be completed today." }
+      ]
+    },
+    {
+      nombre: "Martes",
+      numero: "",
+      dias: ["M"],
+      mensajes: [
+        { hora: "12:00", texto: "Hi team, @everyone\nFriendly reminder that we will have a 144 meeting today at 3:30 PM.\nThank you." }
+      ]
+    },
+    {
+      nombre: "Viernes",
+      numero: "",
+      dias: ["V"],
+      mensajes: [
+        { hora: "10:00", texto: "Let’s make sure all confirmations are in by today 5pm 🚨🚨" },
+        { hora: "11:00", texto: "Let’s make sure all confirmations are in by today 5pm 🚨🚨" },
+        { hora: "13:00", texto: "Let’s make sure all confirmations are in by today 5pm 🚨🚨" }
+      ]
+    }
+  ]
+};
+
+/* ====== De aquí para abajo NO necesitas tocar nada ====== */
+
+const DIAS_ORDEN = ["L","M","X","J","V","S","D"];
+const DIAS_NOMBRE = { L:"Lunes", M:"Martes", X:"Miércoles", J:"Jueves", V:"Viernes", S:"Sábado", D:"Domingo" };
+const DIAS_CORTO  = { L:"Lun", M:"Mar", X:"Mié", J:"Jue", V:"Vie", S:"Sáb", D:"Dom" };
+// JS getDay(): 0=Dom,1=Lun... lo mapeamos a nuestras letras
+const JS_A_LETRA = ["D","L","M","X","J","V","S"];
+
+let diaSel = JS_A_LETRA[new Date().getDay()];
+if (diaSel === "D") diaSel = "L"; // si es domingo, muestra Lunes por default
+let editRef = null;
+
+// estado de "enviados" y "textos editados", guardados en memoria por día
+const sent = {};   // clave: dia|chatIdx|msgIdx  -> true
+const edits = {};  // clave: dia|chatIdx|msgIdx  -> texto nuevo
+
+function keyOf(d, c, m) { return d + "|" + c + "|" + m; }
+
+function toMin(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function ahoraMin() {
+  const n = new Date();
+  return n.getHours() * 60 + n.getMinutes();
+}
+
+function esHoy(dia) {
+  let hoy = JS_A_LETRA[new Date().getDay()];
+  return dia === hoy;
+}
+
+// ¿es este el mensaje "de ahorita"? -> el más cercano cuya hora ya pasó o está dentro de 30 min
+function marcarAhora(items) {
+  if (!esHoy(diaSel)) return;
+  const ahora = ahoraMin();
+  let mejor = -1, mejorDif = Infinity;
+  items.forEach((it, i) => {
+    if (it.enviado) return;
+    const dif = ahora - it.min;           // positivo = ya pasó la hora
+    if (dif >= -30 && dif < 120) {         // ventana: 30 min antes hasta 2h después
+      const abs = Math.abs(dif);
+      if (abs < mejorDif) { mejorDif = abs; mejor = i; }
+    }
+  });
+  if (mejor >= 0) items[mejor].ahora = true;
+}
+
+function construirLista() {
+  const grupos = [];
+  DATOS.chats.forEach((chat, ci) => {
+    if (!chat.dias.includes(diaSel)) return;
+    const items = chat.mensajes.map((msg, mi) => {
+      const k = keyOf(diaSel, ci, mi);
+      return {
+        ci, mi, k,
+        hora: msg.hora,
+        min: toMin(msg.hora),
+        texto: edits[k] !== undefined ? edits[k] : msg.texto,
+        original: msg.texto,
+        numero: chat.numero,
+        enviado: !!sent[k],
+        ahora: false
+      };
+    }).sort((a, b) => a.min - b.min);
+    marcarAhora(items);
+    grupos.push({ nombre: chat.nombre, items });
+  });
+  return grupos;
+}
+
+function abrirMensajes(numero, texto) {
+  const cuerpo = encodeURIComponent(texto);
+  // iOS: sms:&body=  o  sms:NUMERO&body=
+  let url;
+  if (numero && numero.trim() !== "") {
+    const num = numero.replace(/\s/g, "");
+    url = "sms:" + num + "&body=" + cuerpo;
+  } else {
+    url = "sms:&body=" + cuerpo;
+  }
+  window.location.href = url;
+}
+
+function mandar(k, numero, texto) {
+  sent[k] = true;
+  abrirMensajes(numero, texto);
+  render();
+}
+
+function marcarHecho(k) {
+  sent[k] = !sent[k];
+  render();
+}
+
+function openEdit(k, texto) {
+  editRef = k;
+  document.getElementById("editText").value = texto;
+  document.getElementById("overlay").classList.add("open");
+  setTimeout(() => document.getElementById("editText").focus(), 100);
+}
+function closeEdit() {
+  document.getElementById("overlay").classList.remove("open");
+  editRef = null;
+}
+function saveEdit() {
+  if (editRef !== null) {
+    edits[editRef] = document.getElementById("editText").value;
+  }
+  closeEdit();
+  render();
+}
+
+function render() {
+  // Barra de días
+  const bar = document.getElementById("daybar");
+  bar.innerHTML = "";
+  DIAS_ORDEN.filter(d => d !== "D").forEach(d => {
+    const el = document.createElement("div");
+    el.className = "day" + (d === diaSel ? " active" : "") + (esHoy(d) ? " today" : "");
+    el.textContent = DIAS_CORTO[d];
+    el.onclick = () => { diaSel = d; render(); };
+    bar.appendChild(el);
+  });
+
+  document.getElementById("title").textContent = DIAS_NOMBRE[diaSel];
+
+  const grupos = construirLista();
+  const main = document.getElementById("main");
+  main.innerHTML = "";
+
+  // progreso
+  let total = 0, hechos = 0;
+  grupos.forEach(g => g.items.forEach(it => { total++; if (it.enviado) hechos++; }));
+
+  if (total === 0) {
+    main.innerHTML = '<div class="empty"><div class="big">🎉</div>No tienes recordatorios este día.<br>¡Descansa!</div>';
+    return;
+  }
+
+  const prog = document.createElement("div");
+  prog.className = "progress";
+  prog.innerHTML = '<span>' + hechos + '/' + total + '</span>' +
+    '<div class="pbar"><div class="pfill" style="width:' + (total ? (hechos/total*100) : 0) + '%"></div></div>' +
+    '<span>' + (hechos === total ? '¡Listo! ✅' : 'enviados') + '</span>';
+  main.appendChild(prog);
+
+  grupos.forEach(g => {
+    const wrap = document.createElement("div");
+    wrap.className = "chat-group";
+    const head = document.createElement("div");
+    head.className = "chat-head";
+    head.innerHTML = '<span class="chat-dot"></span>' + g.nombre;
+    wrap.appendChild(head);
+
+    g.items.forEach(it => {
+      const card = document.createElement("div");
+      card.className = "card" + (it.ahora ? " now" : "") + (it.enviado ? " sent" : "");
+
+      let badge = "";
+      if (it.enviado) badge = '<span class="badge sent">Enviado</span>';
+      else if (it.ahora) badge = '<span class="badge now">Ahorita</span>';
+
+      card.innerHTML =
+        '<div class="card-top"><span class="time">' + it.hora + '</span>' + badge + '</div>' +
+        '<div class="msg"></div>' +
+        '<div class="actions">' +
+          '<button class="btn btn-send">' + (it.enviado ? '↻ Mandar otra vez' : '➤ Mandar') + '</button>' +
+          '<button class="btn btn-edit" title="Editar">✎</button>' +
+          '<button class="btn btn-done" title="Marcar">' + (it.enviado ? '↺' : '✓') + '</button>' +
+        '</div>';
+
+      card.querySelector(".msg").textContent = it.texto;
+      card.querySelector(".btn-send").onclick = () => mandar(it.k, it.numero, it.texto);
+      card.querySelector(".btn-edit").onclick = () => openEdit(it.k, it.texto);
+      card.querySelector(".btn-done").onclick = () => marcarHecho(it.k);
+
+      wrap.appendChild(card);
+    });
+    main.appendChild(wrap);
+  });
+
+  const hint = document.createElement("div");
+  hint.className = "hint";
+  hint.textContent = "Toca “Mandar” → se abre Mensajes con el texto listo → solo presiona enviar 📲";
+  main.appendChild(hint);
+}
+
+/* ====== ALARMAS AUTOMÁTICAS (archivo de Calendario .ics) ====== */
+
+// Mapea nuestras letras a los códigos de día que usa el calendario
+const DIA_ICS = { L:"MO", M:"TU", X:"WE", J:"TH", V:"FR", S:"SA", D:"SU" };
+const DIA_JS  = { L:1, M:2, X:3, J:4, V:5, S:6, D:0 };
+
+// Junta todos los recordatorios únicos (hora + día + chat) para las alarmas
+function listaAlarmas() {
+  const arr = [];
+  DATOS.chats.forEach(chat => {
+    chat.dias.forEach(dia => {
+      chat.mensajes.forEach(msg => {
+        arr.push({
+          dia, hora: msg.hora,
+          min: toMin(msg.hora),
+          chat: chat.nombre,
+          texto: msg.texto
+        });
+      });
+    });
+  });
+  // ordena por día y luego por hora
+  arr.sort((a,b) => (DIA_JS[a.dia]||9) - (DIA_JS[b.dia]||9) || a.min - b.min);
+  return arr;
+}
+
+function openAlarms() {
+  const lista = listaAlarmas();
+  const cont = document.getElementById("alarmList");
+  cont.innerHTML = "";
+  lista.forEach(a => {
+    const row = document.createElement("div");
+    row.className = "alarm-row";
+    row.innerHTML = '<span class="a-time">' + a.hora + '</span>' +
+      '<span class="a-day">' + DIAS_NOMBRE[a.dia] + ' · ' + a.chat + '</span>';
+    cont.appendChild(row);
+  });
+  document.getElementById("alarmOverlay").classList.add("open");
+}
+function closeAlarms() {
+  document.getElementById("alarmOverlay").classList.remove("open");
+}
+
+// Encuentra la próxima fecha (a partir de hoy) que cae en cierto día de la semana
+function proximaFecha(diaLetra, hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const objetivo = DIA_JS[diaLetra];
+  const hoy = new Date();
+  const d = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate(), h, m, 0);
+  let delta = (objetivo - d.getDay() + 7) % 7;
+  // si es hoy pero la hora ya pasó, brinca a la próxima semana
+  if (delta === 0 && d.getTime() < hoy.getTime()) delta = 7;
+  d.setDate(d.getDate() + delta);
+  return d;
+}
+
+function fmtICS(date) {
+  const p = n => n.toString().padStart(2,"0");
+  return date.getFullYear() + p(date.getMonth()+1) + p(date.getDate()) +
+    "T" + p(date.getHours()) + p(date.getMinutes()) + "00";
+}
+
+function descargarAlarmas() {
+  const lista = listaAlarmas();
+  let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Recordatorios//ES\r\nCALSCALE:GREGORIAN\r\n";
+
+  lista.forEach((a, i) => {
+    const inicio = proximaFecha(a.dia, a.hora);
+    const fin = new Date(inicio.getTime() + 15 * 60000); // dura 15 min
+    const uid = "rec-" + i + "-" + Date.now() + "@app";
+    // recorte del texto para el título/nota
+    const primeraLinea = a.texto.split("\n")[0].slice(0, 60);
+    const notaLimpia = a.texto.replace(/\r?\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
+
+    ics += "BEGIN:VEVENT\r\n";
+    ics += "UID:" + uid + "\r\n";
+    ics += "DTSTAMP:" + fmtICS(new Date()) + "\r\n";
+    ics += "DTSTART:" + fmtICS(inicio) + "\r\n";
+    ics += "DTEND:" + fmtICS(fin) + "\r\n";
+    ics += "RRULE:FREQ=WEEKLY;BYDAY=" + DIA_ICS[a.dia] + "\r\n";
+    ics += "SUMMARY:🔔 Mandar: " + primeraLinea.replace(/,/g,"\\,") + " (" + a.chat + ")\r\n";
+    ics += "DESCRIPTION:" + notaLimpia + "\r\n";
+    // Alarma que suena justo a la hora del evento
+    ics += "BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:Mandar recordatorio\r\nTRIGGER:PT0M\r\nEND:VALARM\r\n";
+    ics += "END:VEVENT\r\n";
+  });
+
+  ics += "END:VCALENDAR\r\n";
+
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "recordatorios.ics";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function tick() {
+  const n = new Date();
+  const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  const h = n.getHours().toString().padStart(2,"0");
+  const m = n.getMinutes().toString().padStart(2,"0");
+  document.getElementById("clock").textContent = dias[n.getDay()] + " · " + h + ":" + m;
+}
+
+setInterval(tick, 1000 * 20);
+tick();
+render();
+// re-render cada minuto para que "Ahorita" se mueva solo
+setInterval(render, 60000);
+</script>
+</body>
+</html>
